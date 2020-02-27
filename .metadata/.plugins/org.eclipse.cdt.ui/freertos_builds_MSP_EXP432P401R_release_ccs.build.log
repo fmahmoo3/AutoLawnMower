@@ -1,0 +1,8 @@
+
+**** Build of configuration Debug for project freertos_builds_MSP_EXP432P401R_release_ccs ****
+
+/Applications/ti/ccs910/ccs/utils/bin/gmake -k -j 3 all -O 
+ 
+gmake: Nothing to be done for 'all'.
+
+**** Build Finished ****

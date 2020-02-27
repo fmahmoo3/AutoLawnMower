@@ -1,0 +1,89 @@
+################################################################################
+# Automatically-generated file. Do not edit!
+################################################################################
+
+# Add inputs and outputs from these tool invocations to the build variables 
+CMD_SRCS += \
+../MSP_EXP432P401R_FREERTOS.cmd 
+
+SYSCFG_SRCS += \
+../outofbox_msp432p401r.syscfg 
+
+C_SRCS += \
+../constantSpeedThread.c \
+../heartBeat.c \
+../initsUtilsCommands.c \
+../lightSensorThread.c \
+../main_freertos.c \
+./syscfg/ti_drivers_config.c \
+../uartThread.c 
+
+GEN_FILES += \
+./syscfg/ti_drivers_config.c 
+
+GEN_MISC_DIRS += \
+./syscfg/ 
+
+C_DEPS += \
+./constantSpeedThread.d \
+./heartBeat.d \
+./initsUtilsCommands.d \
+./lightSensorThread.d \
+./main_freertos.d \
+./syscfg/ti_drivers_config.d \
+./uartThread.d 
+
+OBJS += \
+./constantSpeedThread.obj \
+./heartBeat.obj \
+./initsUtilsCommands.obj \
+./lightSensorThread.obj \
+./main_freertos.obj \
+./syscfg/ti_drivers_config.obj \
+./uartThread.obj 
+
+GEN_MISC_FILES += \
+./syscfg/ti_drivers_config.h \
+./syscfg/syscfg_c.rov.xs 
+
+GEN_MISC_DIRS__QUOTED += \
+"syscfg/" 
+
+OBJS__QUOTED += \
+"constantSpeedThread.obj" \
+"heartBeat.obj" \
+"initsUtilsCommands.obj" \
+"lightSensorThread.obj" \
+"main_freertos.obj" \
+"syscfg/ti_drivers_config.obj" \
+"uartThread.obj" 
+
+GEN_MISC_FILES__QUOTED += \
+"syscfg/ti_drivers_config.h" \
+"syscfg/syscfg_c.rov.xs" 
+
+C_DEPS__QUOTED += \
+"constantSpeedThread.d" \
+"heartBeat.d" \
+"initsUtilsCommands.d" \
+"lightSensorThread.d" \
+"main_freertos.d" \
+"syscfg/ti_drivers_config.d" \
+"uartThread.d" 
+
+GEN_FILES__QUOTED += \
+"syscfg/ti_drivers_config.c" 
+
+C_SRCS__QUOTED += \
+"../constantSpeedThread.c" \
+"../heartBeat.c" \
+"../initsUtilsCommands.c" \
+"../lightSensorThread.c" \
+"../main_freertos.c" \
+"./syscfg/ti_drivers_config.c" \
+"../uartThread.c" 
+
+SYSCFG_SRCS__QUOTED += \
+"../outofbox_msp432p401r.syscfg" 
+
+

@@ -1,0 +1,27 @@
+#ifndef INITSUTILSCOMMANDS_H_
+#define INITSUTILSCOMMANDS_H_
+
+#include <ti/drivers/UART.h>
+#include <ti/drivers/PWM.h>
+
+
+/* Peripheral Init Functions */
+extern void uartInit();
+extern void pwmInit();
+
+
+/* Writing to UART Functions */
+extern void getChar(char *val);
+extern void putChar(char *val);
+extern void putString(char *val);
+extern int length(char *a);
+
+
+/* PWM Helper Functions */
+extern uint32_t calculateDutyCycle(uint32_t percent);
+extern void changeDutyCyclePercent(uint32_t percent, uint8_t motor);
+extern void changeDutyCycle(uint32_t val, uint8_t motor);
+
+
+
+#endif /* INITSUTILSCOMMANDS_H_ */

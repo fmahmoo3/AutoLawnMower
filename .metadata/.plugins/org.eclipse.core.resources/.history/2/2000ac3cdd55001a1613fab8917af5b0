@@ -1,0 +1,364 @@
+#include <stdlib.h>
+#include <stdio.h>
+
+/*freeRtos include */
+#include "FreeRTOS.h"
+#include "task.h"
+#include "portmacro.h"
+#include <semaphore.h>
+
+
+/* Driver Header Files */
+#include <ti/devices/msp432p4xx/driverlib/gpio.h>
+#include <ti/drivers/UART.h>
+#include <ti/drivers/PWM.h>
+#include <ti/drivers/Timer.h>
+#include "ti_drivers_config.h"
+
+/* Local Header Files */
+#include "initsUtilsCommands.h"
+
+/* Global Variables */
+char str[25]; // temp variable used to print numbers
+
+
+/* Handle to write to UART */
+UART_Handle uart_handle;
+
+
+/* PWM Variables */
+PWM_Handle pwm_left_handle;
+PWM_Handle pwm_right_handle;
+const uint32_t MOTORMAXPERIOD = 10000;
+const uint8_t left = 0;
+const uint8_t right = 1;
+uint32_t leftMotorDutyCycle;
+uint32_t rightMotorDutyCycle;
+uint8_t moveStat = 0; // 0=stop, 1=go
+
+
+/* Look Up Table for commands from UART */
+void (*lookUpTable[26][26])() = {{NULL}};
+
+/*
+ *
+ *
+ * Peripheral Init Functions
+ *
+ *
+ */
+void uartInit(){
+    UART_init();                // Initializes TI's UART
+
+    /* Define UART parameters */
+    UART_Params uartParams;
+    UART_Params_init(&uartParams);
+    uartParams.writeDataMode = UART_DATA_BINARY;
+    uartParams.readDataMode = UART_DATA_BINARY;
+    uartParams.readReturnMode = UART_RETURN_FULL;
+    uartParams.readEcho = UART_ECHO_OFF;
+    uartParams.baudRate = 115200;
+
+    //uart_handle = UART_open(CONFIG_UART_BLUETOOTH, &uartParams); // CONFIG_UART_BLUETOOTH: RX = P3.2, TX = P3.3 CONFIG_UART_BLUETOOTH was made using the outofbox_msp432p401r.syscfg file
+    uart_handle = UART_open(CONFIG_UART1, &uartParams); // CONFIG_UART1: is the board serial port
+
+    if (uart_handle == NULL) {
+        // UART_open() failed
+        while (1);
+    }
+}
+
+void pwmInit(){
+    PWM_Params pwmParams;
+
+    //Initialize GPIO Out Pins to control direction of motors
+    GPIO_setAsOutputPin(GPIO_PORT_P6, GPIO_PIN0); // Left Motor Control1 P6.0
+    GPIO_setAsOutputPin(GPIO_PORT_P3, GPIO_PIN3); // Left Motor Control2 P3.3
+    GPIO_setAsOutputPin(GPIO_PORT_P2, GPIO_PIN6); // Right Motor Control1 P2.6
+    GPIO_setAsOutputPin(GPIO_PORT_P5, GPIO_PIN6); // Right Motor Control2 P5.6
+
+    // Initialize the PWM driver.
+    PWM_init();
+
+    // Initialize the PWM parameters
+    PWM_Params_init(&pwmParams);
+    pwmParams.idleLevel = PWM_IDLE_LOW;         // Output low when PWM is not running
+    pwmParams.periodUnits = PWM_PERIOD_US;      // Period is in us
+    pwmParams.periodValue = MOTORMAXPERIOD;
+    pwmParams.dutyUnits = PWM_DUTY_US;    // Duty is in fractional percentage
+    pwmParams.dutyValue = 0;                    // 0% initial duty cycle
+
+    // Open the PWM left motor instance
+    pwm_left_handle = PWM_open(CONFIG_PWM_LEFT_MOTOR, &pwmParams); //P3.2
+    if (pwm_left_handle == NULL) {
+        // PWM_open() failed
+        while (1);
+    }
+
+    PWM_start(pwm_left_handle); // start PWM with 0% duty cycle
+
+
+    // Open the PWM right motor instance
+    pwm_right_handle = PWM_open(CONFIG_PWM_RIGHT_MOTOR, &pwmParams); //P2.4
+    if (pwm_right_handle == NULL) {
+        // PWM_open() failed
+        while (1);
+    }
+
+    PWM_start(pwm_right_handle); // start PWM with 0% duty cycle
+}
+
+
+
+
+
+/*
+ *
+ *
+ * Writing to UART Functions
+ *
+ *
+ */
+void getChar(char *val){
+    UART_read(uart_handle, val, 1);
+}
+
+/* This was made since using putString depends on having string which has a '\0' at the end. */
+void putChar(char *val){
+    UART_write(uart_handle, val, 1);
+}
+
+void putString(char *val){
+    UART_write(uart_handle, val, length(val));
+}
+
+/* length() is a helper function for putString since UART_write() requires knowing number of chars in a string */
+int length(char *a) {
+    int i = 0;
+    while (a[i] != '\0') {
+        i++;
+    }
+    return i;
+}
+
+
+
+
+
+/*
+ *
+ *
+ * Commands UART Functions
+ *
+ *
+ */
+void commandsInit(){
+    /* Initialize GPIO Output Pins for commands */
+    GPIO_setAsOutputPin(GPIO_PORT_P2, GPIO_PIN0); // on board LED1 red LED
+    GPIO_setAsOutputPin(GPIO_PORT_P2, GPIO_PIN1); // on board LED1 green LED
+    GPIO_setAsOutputPin(GPIO_PORT_P2, GPIO_PIN2); // on board LED1 blue LED
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN0);
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN1);
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN2);
+
+    // Initialize command interpretor
+    lookUpTable['t'-'a']['r'-'a'] = &toggleRed;         //tr; toggle red led
+    lookUpTable['t'-'a']['g'-'a'] = &toggleGreen;       //tg; toggle green led
+    lookUpTable['t'-'a']['b'-'a'] = &toggleBlue;        //tb; toggle blue led
+
+    lookUpTable['g'-'a']['o'-'a'] = &start;             //go; run maze
+    lookUpTable['r'-'a']['e'-'a'] = &backwards;         //re; runs both motors in robots backwards direction
+    lookUpTable['s'-'a']['t'-'a'] = &stop;              //st; turn motors off
+
+    lookUpTable['l'-'a']['s'-'a'] = &lowSpeed;          //ls; duty cycle to 10%, no specific direction
+    lookUpTable['h'-'a']['s'-'a'] = &highSpeed;         //hs; duty cycle to 100%, no specific direction
+    lookUpTable['m'-'a']['s'-'a'] = &highSpeed;         //ms; duty cycle to 50%, no specific direction
+
+    lookUpTable['r'-'a']['r'-'a'] = &rotateRight;       //rr; rotates robot towards right, no specific speed
+    lookUpTable['r'-'a']['l'-'a'] = &rotateLeft;        //rl; rotates robot towards left, no specific speed
+
+    lookUpTable['i'-'a']['p'-'a'] = &increasePWM;       //ip; increase PWM by 1%
+    lookUpTable['d'-'a']['p'-'a'] = &decreasePWM;       //dp; decrease PWM by 1%
+}
+
+int commandUnderstood(char a, char b){
+    if(lookUpTable[a -'a'][b -'a'] != NULL){
+        return 1;
+    }
+    else{
+        return 0;
+    }
+}
+
+void runCommand(char a, char b){
+    lookUpTable[a -'a'][b -'a']();
+}
+
+void toggleRed(){
+    GPIO_toggleOutputOnPin(GPIO_PORT_P2, GPIO_PIN0);
+}
+
+void toggleGreen(){
+    GPIO_toggleOutputOnPin(GPIO_PORT_P2, GPIO_PIN1);
+}
+
+void toggleBlue(){
+    GPIO_toggleOutputOnPin(GPIO_PORT_P2, GPIO_PIN2);
+}
+
+void start(){
+    //Initialize Motor so robot moves in forward direction
+    GPIO_setOutputLowOnPin(GPIO_PORT_P6, GPIO_PIN0); // Left Motor Control1 P6.0
+    GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN3); // Left Motor Control2 P3.3
+
+    GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN6); // Right Motor Control1 P2.6
+    GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN6); // Right Motor Control2 P5.6
+
+    moveStat = 1;
+
+    putString("Robot set to forwards");
+}
+
+void backwards(){
+    //Initialize Motor so robot moves in forward direction
+    GPIO_setOutputHighOnPin(GPIO_PORT_P6, GPIO_PIN0); // Left Motor Control1 P6.0
+    GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN3); // Left Motor Control2 P3.3
+
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN6); // Right Motor Control1 P2.6
+    GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN6); // Right Motor Control2 P5.6
+
+    putString("Robot set to backwards");
+}
+
+void stop(){
+    // Since we are stopping the motors, we do not need to set the motor control directions
+    GPIO_setOutputLowOnPin(GPIO_PORT_P6, GPIO_PIN0); // Left Motor Control1 P6.0
+    GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN3); // Left Motor Control2 P3.3
+
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN6); // Right Motor Control1 P2.6
+    GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN6); // Right Motor Control2 P5.6
+
+    changeDutyCyclePercent(0, left);
+    changeDutyCyclePercent(0, right);
+
+    moveStat = 0;
+
+    putString("Robot has been stopped");
+
+}
+
+void increasePWM(){
+    changeDutyCyclePercent(leftMotorDutyCycle*100/MOTORMAXPERIOD+1, left);
+    changeDutyCyclePercent(rightMotorDutyCycle*100/MOTORMAXPERIOD+1, right);
+
+    sprintf(str,"Robot PWM set to %d",rightMotorDutyCycle*100/MOTORMAXPERIOD);
+    putString(str);
+}
+
+void decreasePWM(){
+    changeDutyCyclePercent(leftMotorDutyCycle*100/MOTORMAXPERIOD-1, left);
+    changeDutyCyclePercent(rightMotorDutyCycle*100/MOTORMAXPERIOD-1, right);
+
+    sprintf(str,"Robot PWM set to %d",rightMotorDutyCycle*100/MOTORMAXPERIOD);
+    putString(str);
+}
+
+void lowSpeed(){
+    // Since we are simply increasing motor speed, we do not need to set the motor control directions
+    changeDutyCyclePercent(29, left);
+    changeDutyCyclePercent(28, right);
+
+    putString("Robot PWM set to 28");
+}
+
+void mediumSpeed(){
+    // Since we are simply increasing motor speed, we do not need to set the motor control directions
+    changeDutyCyclePercent(52, left);
+    changeDutyCyclePercent(50, right);
+
+    putString("Robot PWM set to 50");
+}
+
+void highSpeed(){
+    // Since we are simply increasing motor speed, we do not need to set the motor control directions
+    changeDutyCyclePercent(100, left);
+    changeDutyCyclePercent(97, right);
+
+    putString("Robot PWM set to 100");
+}
+
+void rotateRight(){
+    // Since we are simply rotating, we do not need to adjust the motor speed
+    GPIO_setOutputLowOnPin(GPIO_PORT_P6, GPIO_PIN0); // Left Motor Control1 P6.0
+    GPIO_setOutputHighOnPin(GPIO_PORT_P3, GPIO_PIN3); // Left Motor Control2 P3.3
+
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN6); // Right Motor Control1 P2.6
+    GPIO_setOutputHighOnPin(GPIO_PORT_P5, GPIO_PIN6); // Right Motor Control2 P5.6
+
+    putString("Robot set to right");
+}
+
+void rotateLeft(){
+    // Since we are simply rotating, we do not need to adjust the motor speed
+    GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN6); // Right Motor Control1 P2.6
+    GPIO_setOutputLowOnPin(GPIO_PORT_P5, GPIO_PIN6); // Right Motor Control2 P5.6
+
+    GPIO_setOutputHighOnPin(GPIO_PORT_P6, GPIO_PIN0); // Left Motor Control1 P6.0
+    GPIO_setOutputLowOnPin(GPIO_PORT_P3, GPIO_PIN3); // Left Motor Control2 P3.3
+
+    putString("Robot set to left");
+}
+
+uint8_t getMoveStat(){
+    return moveStat;
+}
+
+
+
+/*
+ *
+ *
+ * PWM Helper Functions
+ *
+ *
+ */
+uint32_t calculateDutyCycle(uint32_t percent){
+    return MOTORMAXPERIOD * percent / 100;
+}
+
+void changeDutyCyclePercent(uint32_t percent, uint8_t motor){
+    if(motor == right){
+        rightMotorDutyCycle = calculateDutyCycle(percent);
+        PWM_setDuty(pwm_right_handle, rightMotorDutyCycle);
+    }
+    else{
+        leftMotorDutyCycle = calculateDutyCycle(percent);
+        PWM_setDuty(pwm_left_handle, leftMotorDutyCycle);
+    }
+}
+
+void changeDutyCycle(uint32_t val, uint8_t motor){
+    if(motor == right){
+        if(val<=0)
+            rightMotorDutyCycle = 0;
+        else if(val<=MOTORMAXPERIOD)
+            rightMotorDutyCycle = val;
+        else
+            rightMotorDutyCycle = MOTORMAXPERIOD;
+
+        PWM_setDuty(pwm_right_handle, rightMotorDutyCycle);
+    }
+    else{
+        if(val<=0)
+            leftMotorDutyCycle = 0;
+        else if(val<=MOTORMAXPERIOD)
+            leftMotorDutyCycle = val;
+        else
+            leftMotorDutyCycle = MOTORMAXPERIOD;
+
+        PWM_setDuty(pwm_left_handle, leftMotorDutyCycle);
+    }
+}
+
+
+

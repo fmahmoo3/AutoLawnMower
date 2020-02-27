@@ -1,0 +1,69 @@
+/* Driver Header Files */
+#include <ti/devices/msp432p4xx/driverlib/gpio.h>
+
+/* freeRtos include */
+#include "FreeRTOS.h"
+#include "task.h"
+#include "portmacro.h"
+
+/* Local Header Files */
+#include "lightSensorThread.h"
+#include "initsUtilsCommands.h"
+
+/* Global Variables */
+pthread_t lightSensorThread_handler;   // used in main_freertos.c to latch on to the lightSensorThread
+
+void *lightSensorThread(void *arg0) {
+    int threshold = 1500; // value that tells robot that a black surface is seen
+    int decay = 0; // value that will increment as reflectance sensor returns a HIGH input
+    char str[25]; // temp variable used to print numbers
+
+    int k; // temp value for the for loop
+
+    int sawBlack = 0;
+    uint32_t time1;
+    uint32_t time2;
+
+    while(1) {
+        decay = 0; // reset decay value every time thread runs
+
+        /* Process for reading value from reflectance sensor START */
+        GPIO_setAsOutputPin(GPIO_PORT_P6, GPIO_PIN4);
+        GPIO_setOutputHighOnPin(GPIO_PORT_P6, GPIO_PIN4);
+
+        for(k=0; k<1000; k++) { }
+
+        GPIO_setAsInputPin(GPIO_PORT_P6, GPIO_PIN4);
+
+        while(GPIO_getInputPinValue(GPIO_PORT_P6, GPIO_PIN4) == GPIO_INPUT_PIN_HIGH ) {
+           decay++;
+        }
+        /* Process for reading value from reflectance sensor END */
+
+        if(getMoveStat() == 1){
+//            if(decay >= threshold) { // black surface seen
+//                if(sawBlack == 0){
+//                    // get time 1
+//                    time1 = getTimerCount();
+//                }
+//                sawBlack++;
+//            }
+//            else { // non black surface seen
+//                // get time 2
+//                time2 = getTimerCount();
+//                if(sawBlack>0){
+//                    sprintf(str,"\n\n\rTime for 1rev: %d [counts]\n\n\r",time2-time1);
+//                    putString(str);
+//                }
+//            }
+            sprintf(str,"\n\n\rDecay: %d\n\n\r",decay);
+            putString(str);
+        }
+
+        vTaskDelay( 1 / portTICK_PERIOD_MS ); // delay of 1 [ms], decreases frequency of this thread running
+   }
+}
+
+
+
+

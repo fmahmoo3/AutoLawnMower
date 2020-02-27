@@ -1,0 +1,59 @@
+/* Driver Header Files */
+#include <ti/devices/msp432p4xx/driverlib/gpio.h>
+
+/* freeRtos include */
+#include "FreeRTOS.h"
+#include "task.h"
+#include "portmacro.h"
+
+/* Local Header Files */
+#include "lightSensorThread.h"
+#include "initsUtilsCommands.h"
+
+/* Global Variables */
+pthread_t lightSensorThread_handler;   // used in main_freertos.c to latch on to the lightSensorThread
+
+void *lightSensorThread(void *arg0) {
+    int threshold = 1500; // value that tells robot that a black surface is seen
+    int decay = 0; // value that will increment as reflectance sensor returns a HIGH input
+    char str[25]; // temp variable used to print numbers
+
+    int k; // temp value for the for loop
+
+    int sawWhite = 0;
+    int sawBlack = 0;
+
+    while(1) {
+        decay = 0; // reset decay value every time thread runs
+
+        /* Process for reading value from reflectance sensor START */
+        GPIO_setAsOutputPin(GPIO_PORT_P6, GPIO_PIN4);
+        GPIO_setOutputHighOnPin(GPIO_PORT_P6, GPIO_PIN4);
+
+        for(k=0; k<1000; k++) { }
+
+        GPIO_setAsInputPin(GPIO_PORT_P6, GPIO_PIN4);
+
+        while(GPIO_getInputPinValue(GPIO_PORT_P6, GPIO_PIN4) == GPIO_INPUT_PIN_HIGH ) {
+           decay++;
+        }
+        /* Process for reading value from reflectance sensor END */
+
+        if(decay >= threshold) { // black surface seen
+            sawBlack += 1;
+            sawWhite = 0;
+        }
+        else { // non black surface seen
+            sprintf(str,"\n\n\rTime Saw Black: %d\n\n\r",sawBlack);
+            putString();
+            sawWhite += 1;
+            sawBlack = 0;
+        }
+
+        vTaskDelay( 10 / portTICK_PERIOD_MS ); // delay of 10 [ms], decreases frequency of this thread running
+   }
+}
+
+
+
+

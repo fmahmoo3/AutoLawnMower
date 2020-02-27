@@ -1,0 +1,18 @@
+
+**** Build of configuration Debug for project outofbox_msp432p401r_MSP_EXP432P401R_freertos_ccs ****
+
+/Applications/ti/ccs910/ccs/utils/bin/gmake -k -j 3 all -O 
+ 
+Building file: "../constantSpeedThread.c"
+Invoking: ARM Compiler
+"/Applications/ti/ccs910/ccs/tools/compiler/ti-cgt-arm_18.12.2.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --include_path="/Users/fazalmahmood/AutoLawnMower/outofbox_msp432p401r_MSP_EXP432P401R_freertos_ccs" --include_path="/Users/fazalmahmood/AutoLawnMower/outofbox_msp432p401r_MSP_EXP432P401R_freertos_ccs/Debug" --include_path="/Users/fazalmahmood/ti/simplelink_msp432p4_sdk_3_30_00_13/source" --include_path="/Users/fazalmahmood/ti/simplelink_msp432p4_sdk_3_30_00_13/source/third_party/CMSIS/Include" --include_path="/Users/fazalmahmood/ti/simplelink_msp432p4_sdk_3_30_00_13/source/ti/posix/ccs" --include_path="/Users/fazalmahmood/FreeRTOSv10.2.1/FreeRTOS/Source/include" --include_path="/Users/fazalmahmood/FreeRTOSv10.2.1/FreeRTOS/Source/portable/CCS/ARM_CM4F" --include_path="/Users/fazalmahmood/AutoLawnMower/freertos_builds_MSP_EXP432P401R_release_ccs" --include_path="/Applications/ti/ccs910/ccs/tools/compiler/ti-cgt-arm_18.12.2.LTS/include" --advice:power=none --define=__MSP432P401R__ --define=DeviceFamily_MSP432P401x -g --diag_warning=225 --diag_warning=255 --diag_wrap=off --display_error_number --gen_func_subsections=on --preproc_with_compile --preproc_dependency="constantSpeedThread.d_raw" --include_path="/Users/fazalmahmood/AutoLawnMower/outofbox_msp432p401r_MSP_EXP432P401R_freertos_ccs/Debug/syscfg"  "../constantSpeedThread.c"
+Finished building: "../constantSpeedThread.c"
+ 
+Building target: "outofbox_msp432p401r_MSP_EXP432P401R_freertos_ccs.out"
+Invoking: ARM Linker
+"/Applications/ti/ccs910/ccs/tools/compiler/ti-cgt-arm_18.12.2.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --advice:power=none --define=__MSP432P401R__ --define=DeviceFamily_MSP432P401x -g --diag_warning=225 --diag_warning=255 --diag_wrap=off --display_error_number --gen_func_subsections=on -z -m"outofbox_msp432p401r_MSP_EXP432P401R_freertos_ccs.map" -i"/Users/fazalmahmood/ti/simplelink_msp432p4_sdk_3_30_00_13/source" -i"/Users/fazalmahmood/AutoLawnMower/freertos_builds_MSP_EXP432P401R_release_ccs/Debug" -i"/Applications/ti/ccs910/ccs/tools/compiler/ti-cgt-arm_18.12.2.LTS/lib" --diag_suppress=10063 --diag_wrap=off --display_error_number --warn_sections --xml_link_info="outofbox_msp432p401r_MSP_EXP432P401R_freertos_ccs_linkInfo.xml" --rom_model -o "outofbox_msp432p401r_MSP_EXP432P401R_freertos_ccs.out" "./constantSpeedThread.obj" "./heartBeat.obj" "./initsUtilsCommands.obj" "./lightSensorThread.obj" "./main_freertos.obj" "./syscfg/ti_drivers_config.obj" "./uartThread.obj" "../MSP_EXP432P401R_FREERTOS.cmd"  -l"ti/display/lib/display.aem4f" -l"ti/grlib/lib/ccs/m4f/grlib.a" -l"third_party/spiffs/lib/ccs/m4f/spiffs.a" -l"ti/drivers/lib/drivers_msp432p401x.aem4f" -l"third_party/fatfs/lib/ccs/m4f/fatfs.a" -lfreertos_builds_MSP_EXP432P401R_release_ccs.lib -l"ti/devices/msp432p4xx/driverlib/ccs/msp432p4xx_driverlib.lib" -llibc.a 
+<Linking>
+Finished building target: "outofbox_msp432p401r_MSP_EXP432P401R_freertos_ccs.out"
+ 
+
+**** Build Finished ****
